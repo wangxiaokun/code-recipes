@@ -150,7 +150,7 @@ string aes_decrypt(const string& strData, const string& strKey)
     hex_str_to_byte(strKey.data(), (unsigned char*)key, strKey.length());
 
     char out[256] = {0};
-    int len = aes_decrypt(data, strlen(data), key, out);
+    int len = aes_decrypt(data, /*strlen(data)*/strData.length() / 2, key, out); // strData可能是以00开头，用strlen(data)会有问题
     if (len < 0)
         return "";
 
