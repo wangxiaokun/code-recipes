@@ -88,11 +88,11 @@ static int PKCS5_unpadding(char* in)
     return pad_len;
 }
 
-static int aes_encrypt(const char* in, const char* key, char* out)
+static int aes_encrypt(const char* in, size_t in_len, const char* key, char* out)
 {
     if (!in || !key || !out) return -1;
 
-    PKCS5_padding((unsigned char*)in, strlen(in));
+    PKCS5_padding((unsigned char*)in, in_len);
 
     AES_KEY enc_key;
     if (AES_set_encrypt_key((const unsigned char*)key, strlen(key)*8, &enc_key) < 0)
@@ -106,7 +106,7 @@ static int aes_encrypt(const char* in, const char* key, char* out)
         position += AES_BLOCK_SIZE;
     }
 
-    return 0;
+    return position;
 }
 
 static int aes_decrypt(const char* in, size_t in_len, const char* key, char* out)
@@ -134,10 +134,14 @@ string aes_encrypt(const string& strData, const string& strKey)
     hex_str_to_byte(strKey.data(), (unsigned char*)key, strKey.length());
 
     char out[256] = {0};
-    if (aes_encrypt(strData.data(), key, out) == -1)
+    char in[256] = {0};
+    memcpy(in, strData.data(), strData.length()); // 因为会进行pad处理必须单独分配空间
+
+    int len = aes_encrypt(in, strData.length(), key, out);
+    if (len == -1)
         return "";
 
-    size_t len = ((strData.length() + AES_BLOCK_SIZE - 1) / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
+    //size_t len = ((strData.length() + AES_BLOCK_SIZE - 1) / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
     return byte_to_hex_string(out, len);
 }
 
@@ -149,8 +153,9 @@ string aes_decrypt(const string& strData, const string& strKey)
     char key[AES_BLOCK_SIZE + 1] = {0};
     hex_str_to_byte(strKey.data(), (unsigned char*)key, strKey.length());
 
+    // 若strData以00开头会有问题
     char out[256] = {0};
-    int len = aes_decrypt(data, /*strlen(data)*/strData.length() / 2, key, out); // strData可能是以00开头，用strlen(data)会有问题
+    int len = aes_decrypt(data, /*strlen(data)*/strData.length() / 2, key, out);
     if (len < 0)
         return "";
 
